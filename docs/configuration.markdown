@@ -161,6 +161,12 @@ end
   libvirt.memtune :type => "hard_limit", :value => 2500000 # Note here the value in kB (not in Mb)
   ```
 * `loader` - Sets path to custom UEFI loader.
+* `nvram` - Sets path to the UEFI variable store used with `loader`, which
+  switches the loader to `pflash`. The file is kept when the machine is
+  destroyed, and a fixed path is shared by every machine that uses it. Set it to
+  `""` to have libvirt create a per-domain variable store from the firmware
+  template matching the loader; that file is removed when the machine is
+  destroyed.
 * `kernel` - To launch the guest with a kernel residing on host filesystems.
   Equivalent to qemu `-kernel`.
 * `initrd` - To specify the initramfs/initrd to use for the guest. Equivalent

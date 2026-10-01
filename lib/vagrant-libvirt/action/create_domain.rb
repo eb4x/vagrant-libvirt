@@ -270,7 +270,10 @@ module VagrantPlugins
           env[:ui].info(" -- Kernel:            #{@kernel}") if @kernel
           env[:ui].info(" -- Initrd:            #{@initrd}") if @initrd
           env[:ui].info(" -- Loader:            #{@loader}") if @loader
-          env[:ui].info(" -- Nvram:             #{@nvram}") if @nvram
+          if @nvram
+            nvram_desc = @nvram.to_s.strip.empty? ? '(managed by libvirt)' : @nvram
+            env[:ui].info(" -- Nvram:             #{nvram_desc}")
+          end
           if env[:machine].config.vm.box
             env[:ui].info(" -- Base box:          #{env[:machine].box.name}")
           end

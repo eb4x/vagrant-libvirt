@@ -553,6 +553,64 @@ describe VagrantPlugins::ProviderLibvirt::Action::StartDomain do
           end
         end
       end
+
+      context 'when managed by libvirt' do
+        let(:vagrantfile_providerconfig) do
+          <<-EOF
+          libvirt.loader = "/path/to/loader/file"
+          libvirt.nvram = ""
+          EOF
+        end
+
+        context 'when being added to existing' do
+          let(:test_file) { 'existing.xml' }
+          let(:updated_test_file) { 'existing_added_libvirt_managed_nvram.xml' }
+
+          it 'should add an empty nvram element' do
+            expect(ui).to_not receive(:warn)
+            expect(connection).to receive(:define_domain).with(updated_domain_xml).and_return(libvirt_domain)
+            expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml, updated_domain_xml)
+            expect(libvirt_domain).to receive(:autostart=)
+            expect(domain).to receive(:start)
+
+            expect(subject.call(env)).to be_nil
+          end
+        end
+
+        context 'when libvirt has assigned a path' do
+          let(:test_file) { 'nvram_domain_libvirt_managed.xml' }
+
+          it 'should leave the domain unchanged' do
+            expect(ui).to_not receive(:warn)
+            expect(ui).to_not receive(:info).with('Updating domain definition due to configuration change')
+            expect(connection).to_not receive(:define_domain)
+            expect(libvirt_domain).to receive(:autostart=)
+            expect(domain).to receive(:start)
+
+            expect(subject.call(env)).to be_nil
+          end
+
+          context 'when switching to an explicit path' do
+            let(:vagrantfile_providerconfig) do
+              <<-EOF
+              libvirt.loader = "/path/to/loader/file"
+              libvirt.nvram = "/path/to/nvram/file1"
+              EOF
+            end
+            let(:updated_test_file) { 'nvram_domain_libvirt_managed_other_setting.xml' }
+
+            it 'should update the nvram path' do
+              expect(ui).to_not receive(:warn)
+              expect(connection).to receive(:define_domain).with(updated_domain_xml).and_return(libvirt_domain)
+              expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml, updated_domain_xml)
+              expect(libvirt_domain).to receive(:autostart=)
+              expect(domain).to receive(:start)
+
+              expect(subject.call(env)).to be_nil
+            end
+          end
+        end
+      end
     end
 
     context 'tpm' do

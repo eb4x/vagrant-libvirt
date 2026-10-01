@@ -201,6 +201,48 @@ describe VagrantPlugins::ProviderLibvirt::Action::DestroyDomain do
         end
       end
 
+      context 'when has nvram managed by libvirt' do
+        let(:vagrantfile) do
+          <<-EOF
+          Vagrant.configure('2') do |config|
+            config.vm.define :test
+            config.vm.provider :libvirt do |libvirt|
+              libvirt.nvram = ""
+            end
+          end
+          EOF
+        end
+
+        it 'sets destroy flags to remove nvram' do
+          expect(domain).to receive(:destroy).with(destroy_volumes: true, flags: VagrantPlugins::ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_NVRAM)
+          expect(subject.call(env)).to be_nil
+        end
+
+        context 'when has CDROMs attached' do
+          let(:vagrantfile) do
+            <<-EOF
+            Vagrant.configure('2') do |config|
+              config.vm.define :test
+              config.vm.provider :libvirt do |libvirt|
+                libvirt.nvram = ""
+                libvirt.storage :file, :device => :cdrom
+              end
+            end
+            EOF
+          end
+          let(:domain_xml_file) { 'cdrom_domain.xml' }
+
+          it 'sets destroy flags to remove nvram' do
+            expect(domain).to receive(:volumes).and_return([root_disk, nil])
+            expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml)
+
+            expect(domain).to receive(:destroy).with(destroy_volumes: false, flags: VagrantPlugins::ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_NVRAM)
+            expect(root_disk).to receive(:destroy)  # root disk remove
+            expect(subject.call(env)).to be_nil
+          end
+        end
+      end
+
       context 'when has CDROMs attached' do
         let(:vagrantfile_providerconfig) do
           <<-EOF

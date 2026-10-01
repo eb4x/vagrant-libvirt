@@ -531,7 +531,15 @@ module VagrantPlugins
           end
 
           nvram = REXML::XPath.first(xml_descr, '/domain/os/nvram')
-          if config.nvram
+          if config.nvram && config.nvram.to_s.strip.empty?
+            # empty nvram means libvirt allocates and manages the varstore per
+            # domain, so any path it has filled in must be left alone
+            if nvram.nil?
+              descr_changed = true
+              nvram = REXML::Element.new('nvram')
+              REXML::XPath.first(xml_descr, '/domain/os').insert_after(loader, nvram)
+            end
+          elsif config.nvram
             if nvram.nil?
               descr_changed = true
               nvram = REXML::Element.new('nvram')

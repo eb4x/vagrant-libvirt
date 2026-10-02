@@ -6,42 +6,19 @@ toc: true
 
 ## Requirements
 
-* [Libvirt](http://libvirt.org) - should work with version 1.5 or newer
-* [Vagrant](http://www.vagrantup.com) - plugin attempts to support all since 1.5
-* [GCC](https://gcc.gnu.org/install/) and [Make](https://www.gnu.org/software/make/) - used to compile native versions of ruby-libvirt and nokogiri when using upstream Vagrant
-
-While we only test with upstream vagrant installed as a gem, we recommend that you install
-vagrant as provided by your distribution as installing vagrant-libvirt involves linking between
-libvirt (ruby-libvirt) and the ruby installation used by vagrant. Since upstream vagrant
-provides an embedded ruby, this typically causes issues with missing symbols between libraries
-included and what is expected by libvirt for the ruby bindings linking to work.
-
-First, you should have both QEMU and Libvirt installed if you plan to run VMs on your
-local system. For instructions, refer to your Linux distribution's documentation. Suggested
-packages are provided in our guides for as a quick reference
+* [Libvirt](https://libvirt.org) and [QEMU](https://www.qemu.org)
+* [Vagrant](https://developer.hashicorp.com/vagrant/install)
+* GCC, Make and the libvirt development headers, to build the
+  [ruby-libvirt](https://rubygems.org/gems/ruby-libvirt) native extension
 
 {: .warning }
 Before you start using vagrant-libvirt, please make sure your Libvirt
 and QEMU installation is working correctly and you are able to create QEMU or
 KVM type virtual machines with `virsh` or `virt-manager`.
 
-Next, you must have Vagrant installed from your distribution packages.
-Vagrant-libvirt supports Vagrant 2.0, 2.1 & 2.2. It should also work with earlier
-releases from 1.5 onwards but they are not actively tested.
-
 {% assign repo = site.github.public_repositories | where: "name", site.github.repository_name %}
 Check the [unit tests](https://github.com/vagrant-libvirt/vagrant-libvirt/blob/{{ repo.first.default_branch }}/.github/workflows/unit-tests.yml)
-for the current list of tested versions.
-
-If there is no distribution package or you wish to use the upstream vagrant, you may wish to use
-the our [QA installation script](https://github.com/vagrant-libvirt/vagrant-libvirt-qa/blob/main/scripts/install.bash)
-to install both vagrant and vagrant-libvirt
-Alternatively you may follow
-[vagrant installation instructions](http://docs.vagrantup.com/v2/installation/index.html) along
-with the manual instructions for what packages to install where indicated for upstream vagrant below.
-In some cases the vagrant version for the distribution may be running with a sufficiently old ruby
-that it is difficult to install the required dependencies and you will need to use the upstream.
-
+for the tested Vagrant versions.
 
 ## Guides
 
@@ -155,221 +132,86 @@ it should no longer attempt to reinstall each time. Eventually this will become
 the default so additional plugin installs will need to install any dependencies needed
 by them.
 
-### Ubuntu / Debian
+### Distributions
 
-{: .info }
-You may need to modify your `sources.list` to uncomment the deb-src entries where using build-dep commands below.
+These guides install upstream Vagrant from HashiCorp, and are the distributions
+the [vagrant-libvirt-qa](https://github.com/vagrant-libvirt/vagrant-libvirt-qa)
+harness tests by bringing up a VM: Ubuntu 22.04, 24.04 and 26.04, Debian 12 and 13,
+Fedora 43 and 44, CentOS Stream 9 and 10, openSUSE Leap 16.0 and Arch Linux, all
+x86_64. Other releases and distribution-packaged Vagrant may work, but are untested.
 
-#### Ubuntu 18.10, Debian 9 and up
-
-* Distro Vagrant
+They install the latest Vagrant version, looked up with:
 ```shell
-sudo apt-get purge vagrant-libvirt
-sudo apt-mark hold vagrant-libvirt
-sudo apt-get install -y qemu libvirt-daemon-system libvirt-dev ebtables libguestfs-tools
-sudo apt-get install -y vagrant ruby-fog-libvirt
+version="$(curl -fsSL https://checkpoint-api.hashicorp.com/v1/check/vagrant | \
+    tr ',' '\n' | grep current_version | cut -d: -f2 | tr -d '"')"
+```
+
+After installing, add your user to the `libvirt` group and log in again, to use
+`qemu:///system` without a password:
+```shell
+sudo usermod -aG libvirt $USER
+```
+
+#### Ubuntu / Debian
+
+```shell
+# enable deb-src, for apt-get build-dep
+sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list                         # one-line format
+sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/*.sources  # deb822 format
+sudo apt-get update
+sudo apt-get build-dep -y ruby-libvirt
+sudo apt-get install -y libvirt-daemon-system qemu-system-x86 qemu-utils
+curl -fLO https://releases.hashicorp.com/vagrant/${version}/vagrant_${version}-1_amd64.deb
+sudo dpkg -i vagrant_${version}-1_amd64.deb
 vagrant plugin install vagrant-libvirt
 ```
 
-{% include upstream-vagrant-install.html distro="ubuntu" -%}
-And subsequently install remaining dependencies and plugin:
+#### Fedora
+
 ```shell
-sudo apt-get build-dep vagrant ruby-libvirt
-sudo apt-get install -y qemu libvirt-daemon-system ebtables libguestfs-tools \
-    libxslt-dev libxml2-dev zlib1g-dev ruby-dev
+sudo dnf install -y @virtualization gcc libvirt-devel make
+curl -fLO https://releases.hashicorp.com/vagrant/${version}/vagrant-${version}-1.x86_64.rpm
+sudo rpm -Uh vagrant-${version}-1.x86_64.rpm
 vagrant plugin install vagrant-libvirt
 ```
 
-#### Ubuntu 18.04, Debian 8 and older
+#### CentOS Stream
 
-{: .warn }
-This has been kept for historical reasons, however only Ubuntu 18.04 is supported due to LTS, please
-consider all other versions unsupported.
-
-{% include upstream-vagrant-install.html distro="debian" content=distro_deps -%}
-And subsequently install remaining dependencies and plugin:
 ```shell
-sudo apt-get build-dep vagrant ruby-libvirt
-sudo apt-get install -y qemu libvirt-bin ebtables libguestfs-tools \
-    libxslt-dev libxml2-dev zlib1g-dev ruby-dev
+sudo dnf config-manager --set-enabled crb
+sudo dnf install -y @virtualization-host-environment gcc libvirt-devel make ruby-devel
+curl -fLO https://releases.hashicorp.com/vagrant/${version}/vagrant-${version}-1.x86_64.rpm
+sudo rpm -Uh vagrant-${version}-1.x86_64.rpm
 vagrant plugin install vagrant-libvirt
 ```
 
-* Distro Vagrant
+#### openSUSE Leap
+
 ```shell
-sudo apt-get purge vagrant-libvirt
-sudo apt-mark hold vagrant-libvirt
-sudo apt-get install -y qemu libvirt-bin ebtables libguestfs-tools
-sudo apt-get install -y vagrant ruby-fog-libvirt
+sudo zypper install --no-confirm gcc make libvirt libvirt-devel qemu-kvm polkit ruby-devel
+curl -fLO https://releases.hashicorp.com/vagrant/${version}/vagrant-${version}-1.x86_64.rpm
+sudo zypper install --allow-unsigned-rpm --no-confirm vagrant-${version}-1.x86_64.rpm
+sudo rm -f /opt/vagrant/embedded/lib/libreadline.so*
 vagrant plugin install vagrant-libvirt
 ```
 
-   {: .warn }
-   Unless you can can install a newer ruby on Debian 8, it is likely that the distro vagrant approach will not be straight forward as vagrant-libvirt requires a fog-core and fog-libvirt releases that depend on ruby 2.5 or newer.
+Removing the embedded libreadline is needed, see
+[Conflicts with Vagrant's embedded libraries](#conflicts-with-vagrants-embedded-libraries).
 
-### Fedora
+#### Arch
 
-#### Fedora 32 and newer
-
-{: .info }
-Due to the involved nature of getting the linking to work correctly when using the upstream
-vagrant, it is strongly recommended to either use the distro packaged vagrant, or the
-install script from the vagrant-libvirt-qa approach.
-
-* Distro Vagrant
+Arch no longer packages Vagrant, so install HashiCorp's package:
 ```shell
-sudo dnf remove vagrant-libvirt
-sudo sed -i \
-    '/^\(exclude=.*\)/ {/vagrant-libvirt/! s//\1 vagrant-libvirt/;:a;n;ba;q}; $aexclude=vagrant-libvirt' \
-    /etc/dnf/dnf.conf
-vagrant_libvirt_deps=($(sudo dnf repoquery --disableexcludes main --depends vagrant-libvirt 2>/dev/null | cut -d' ' -f1))
-dependencies=$(sudo dnf repoquery --qf "%{name}" ${vagrant_libvirt_deps[@]/#/--whatprovides })
-sudo dnf install --assumeyes @virtualization ${dependencies}
-```
-
-The above `sed` command will add `vagrant-libvirt` to the list of packages to be excluded from being installed.
-This prevents it from being pulled in as a weak dependency when installing `vagrant` along with the
-`@virtualization` group. Unfortunately the `dnf versionlock` plugin can only lock to a specific version
-rather than exclude all versions.
-
-
-{% include upstream-vagrant-install.html distro="fedora" -%}
-  Subsequently install remaining dependencies:
-
-  ```shell
-  sudo dnf install --assumeyes libvirt libguestfs-tools \
-      gcc libvirt-devel libxml2-devel make ruby-devel
-  # additional deps to rebuild libraries in upstream vagrant package.
-  sudo dnf install --assumeyes byacc cmake gcc-c++ wget zlib-devel
-  ```
-
-  Before installing the plugin it is necessary to compile some libraries to replace those
-  shipped with the upstream vagrant to prevent the following errors from appearing when
-  vagrant attempts to use vagrant-libvirt on recent Fedora releases.
-
-{% include patch-vagrant-install.html distro="fedora" %}
-
-  Finally install the plugin:
-  ```
-  vagrant plugin install vagrant-libvirt
-  ```
-
-#### Fedora 22 to 31
-
-This has been kept for historical reasons given closeness to CentOS 6 & 7, however as Fedora no
-longer supports these, they can be considered unsupported as well.
-
-{% include upstream-vagrant-install.html distro="fedora" -%}
-And subsequently install remaining dependencies and plugin:
-```shell
-sudo dnf install --assumeyes libvirt libguestfs-tools \
-    gcc libvirt-devel libxml2-devel make ruby-devel
+sudo pacman -Syu --needed dnsmasq gcc libvirt make nftables openbsd-netcat pkgconf qemu-base
+sudo systemctl enable --now libvirtd
+curl -fLO https://releases.hashicorp.com/vagrant/${version}/vagrant-${version}-1-x86_64.pkg.tar.zst
+sudo pacman -U vagrant-${version}-1-x86_64.pkg.tar.zst
+sudo rm -f /opt/vagrant/embedded/lib/lib{readline,curl}.so*
 vagrant plugin install vagrant-libvirt
 ```
 
-### CentOS
-
-#### CentOS 9 Stream
-
-{% include upstream-vagrant-install.html distro="centos" -%}
-  Subsequent install remaining dependencies and plugin
-
-  ```shell
-  sudo dnf config-manager --set-enabled crb
-  sudo dnf install -y '@Virtualization Hypervisor' '@Virtualization Tools' \
-      '@Development Tools' 'libvirt-devel'
-  vagrant plugin install vagrant-libvirt
-  ```
-
-#### CentOS 8 (and Stream)
-
-{% include upstream-vagrant-install.html distro="centos8" -%}
-  Subsequently install remaining dependencies:
-
-  ```shell
-  sudo dnf install --assumeyes libvirt libguestfs-tools \
-      gcc libvirt-devel libxml2-devel make pkgconf-pkg-config ruby-devel
-  # additional deps to rebuild libraries in upstream vagrant package.
-  sudo dnf install --assumeyes byacc cmake gcc-c++ rpm-build wget zlib-devel
-  ```
-
-  Before installing the plugin it is necessary to compile some libraries to replace those
-  shipped with the upstream vagrant to prevent the following errors from appearing when
-  vagrant attempts to use vagrant-libvirt on recent CentOS releases.
-
-{% include patch-vagrant-install.html distro="centos" %}
-
-  Finally install the plugin:
-  ```
-  vagrant plugin install vagrant-libvirt
-  ```
-
-#### CentOS 6 & 7
-
-{% include upstream-vagrant-install.html distro="centos6" -%}
-And subsequently install remaining dependencies and plugin:
-```shell
-sudo yum install --assumeyes qemu qemu-kvm libvirt libguestfs-tools \
-    gcc libvirt-devel make ruby-devel
-vagrant plugin install vagrant-libvirt
-```
-
-### OpenSUSE
-
-As there is no official upstream repository for OpenSUSE, it is recommended that you stick with the
-distribution installation. OpenSUSE Leap appears to make the most recent vagrant available as an
-experimental package based on [https://software.opensuse.org/package/vagrant](https://software.opensuse.org/package/vagrant).
-
-#### Leap 15
-
-* Distro Vagrant
-```shell
-sudo zypper refresh
-sudo zypper addlock vagrant-libvirt
-fog_libvirt_pkg="$(
-    sudo zypper --terse -n --quiet search --provides "rubygem(fog-libvirt)" | \
-    tail -n1 | cut -d' ' -f4)"
-sudo zypper install --no-confirm libvirt qemu-kvm libguestfs polkit vagrant ${fog_libvirt_pkg}
-vagrant plugin install vagrant-libvirt
-```
-
-{% include upstream-vagrant-install.html distro="opensuse" -%}
-  Subsequently install remaining dependencies:
-
-  ```shell
-  sudo zypper install --no-confirm libvirt qemu-kvm libguestfs \
-      gcc make libvirt-devel polkit ruby-devel
-  # additional deps to rebuild libraries in upstream vagrant package.
-  sudo zypper install --no-confirm byacc cmake gcc-++ libssh4 perl-XML-XPath wget zlib-devel
-  ```
-
-  Before installing the plugin it is necessary to compile some libraries to replace those
-  shipped with the upstream vagrant to prevent the following errors from appearing when
-  vagrant attempts to use vagrant-libvirt on recent OpenSUSE Leap releases.
-
-{% include patch-vagrant-install.html distro="opensuse" %}
-
-  Finally install the plugin:
-  ```
-  vagrant plugin install vagrant-libvirt
-  ```
-
-### Arch
-
-Please read the related [ArchWiki](https://wiki.archlinux.org/index.php/Vagrant#vagrant-libvirt) page.
-
-As Arch is a rolling release, the version of vagrant available from the distribution should always be the most recent.
-Unfortunately it does not appear to be possible to install ruby-libvirt from AUR anymore, which would remove
-the need for the additional build tools.
-```shell
-sudo pacman --sync --sysupgrade --refresh
-sudo pacman --query --search 'iptables' | grep "local" | grep "iptables " && \
-    sudo pacman --remove --nodeps --nodeps --noconfirm iptables
-sudo pacman --sync --needed --noprogressbar --noconfirm \
-    iptables-nft libvirt qemu openbsd-netcat bridge-utils dnsmasq vagrant \
-        pkg-config gcc make ruby
-vagrant plugin install vagrant-libvirt
-```
+Removing the embedded libreadline and libcurl is needed, see
+[Conflicts with Vagrant's embedded libraries](#conflicts-with-vagrants-embedded-libraries).
 
 ## Issues and Known Solutions
 
@@ -402,68 +244,16 @@ sudo alternatives --set ld /usr/bin/ld.gold
 sudo ln -fs /usr/bin/ld.gold /usr/bin/ld
 ```
 
-### LoadError Exceptions
+### Conflicts with Vagrant's embedded libraries
 
-If you encounter the following load error when using the vagrant-libvirt plugin (note the required by libssh):
+Vagrant puts the libraries it bundles in `/opt/vagrant/embedded/lib` on
+`LD_LIBRARY_PATH` while building ruby-libvirt, so they are used in place of the
+system ones. Where they are incompatible, installing the plugin fails with e.g.:
 
-```/opt/vagrant/embedded/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require': /opt/vagrant/embedded/lib64/libcrypto.so.1.1: version `OPENSSL_1_1_1b' not found (required by /lib64/libssh.so.4) - /home/xxx/.vagrant.d/gems/2.4.6/gems/ruby-libvirt-0.7.1/lib/_libvirt.so (LoadError)```
+* `symbol lookup error: ... libreadline.so.8: undefined symbol: UP` from `/bin/sh`
+  (openSUSE Leap 16, Arch)
+* undefined `curl_*@CURL_OPENSSL_4` symbols when linking against libvirt (Arch)
 
-then the following steps have been found to resolve the problem. Thanks to James Reynolds (see https://github.com/hashicorp/vagrant/issues/11020#issuecomment-540043472). The specific version of libssh will change over time so references to the rpm in the commands below will need to be adjusted accordingly.
-
-{: .info }
-See distro specific instructions for variations on this that contain version independent steps.
-
-```shell
-# Fedora
-dnf download --source libssh
-
-# centos 8 stream, doesn't provide source RPMs, so you need to download like so
-git clone https://git.centos.org/centos-git-common
-# centos-git-common needs its tools in PATH
-export PATH=$(readlink -f ./centos-git-common):$PATH
-git clone https://git.centos.org/rpms/libssh
-cd libssh
-git checkout imports/c8s/libssh-0.9.4-1.el8
-into_srpm.sh -d c8s
-cd SRPMS
-
-# common commands (make sure to adjust version accordingly)
-rpm2cpio libssh-0.9.4-1c8s.src.rpm | cpio -imdV
-tar xf libssh-0.9.4.tar.xz
-mkdir build
-cmake ../libssh-0.9.4 -DOPENSSL_ROOT_DIR=/opt/vagrant/embedded/
-make
-sudo cp lib/libssh* /opt/vagrant/embedded/lib64
-```
-
-If you encounter the following load error when using the vagrant-libvirt plugin (note the required by libk5crypto):
-
-```/opt/vagrant/embedded/lib/ruby/2.4.0/rubygems/core_ext/kernel_require.rb:55:in `require': /usr/lib64/libk5crypto.so.3: undefined symbol: EVP_KDF_ctrl, version OPENSSL_1_1_1b - /home/rbelgrave/.vagrant.d/gems/2.4.9/gems/ruby-libvirt-0.7.1/lib/_libvirt.so (LoadError)```
-
-then the following steps have been found to resolve the problem. After the steps below are complete, then reinstall the vagrant-libvirt plugin without setting the `CONFIGURE_ARGS`. Thanks to Marco Bevc (see https://github.com/hashicorp/vagrant/issues/11020#issuecomment-625801983):
-
-```shell
-# Fedora
-dnf download --source krb5-libs
-
-# centos 8 stream, doesn't provide source RPMs, so you need to download like so
-git clone https://git.centos.org/centos-git-common
-# make get_sources.sh executable as it is needed in krb5
-chmod +x centos-git-common/get_sources.sh
-# centos-git-common needs its tools in PATH
-export PATH=$(readlink -f ./centos-git-common):$PATH
-git clone https://git.centos.org/rpms/krb5
-cd krb5
-git checkout imports/c8s/krb5-1.18.2-8.el8
-get_sources.sh
-into_srpm.sh -d c8s
-cd SRPMS
-
-# common commands (make sure to adjust version accordingly)
-rpm2cpio krb5-1.18.2-8c8s.src.rpm | cpio -imdV
-tar xf krb5-1.18.2.tar.gz
-cd krb5-1.18.2/src
-./configure
-make
-sudo cp -P lib/crypto/libk5crypto.* /opt/vagrant/embedded/lib64/
-```
+Remove the conflicting library so the system one is used instead, e.g.
+`sudo rm -f /opt/vagrant/embedded/lib/libreadline.so*`, and reinstall the plugin.
+Upgrading Vagrant restores the removed libraries.

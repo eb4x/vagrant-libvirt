@@ -1038,7 +1038,8 @@ module VagrantPlugins
         @graphics_ip = @graphics_type == 'spice' ? nil : '127.0.0.1' if @graphics_ip == UNSET_VALUE
         @video_accel3d = false if @video_accel3d == UNSET_VALUE
         @graphics_gl = @video_accel3d if @graphics_gl == UNSET_VALUE
-        @video_type = @video_accel3d ? 'virtio' : 'cirrus' if @video_type == UNSET_VALUE
+        # when unset, the video type is chosen from the domain capabilities by the driver
+        @video_type = @video_accel3d ? 'virtio' : nil if @video_type == UNSET_VALUE
         @video_vram = 16384 if @video_vram == UNSET_VALUE
         @sound_type = nil if @sound_type == UNSET_VALUE
         @keymap = 'en-us' if @keymap == UNSET_VALUE

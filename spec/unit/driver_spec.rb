@@ -369,6 +369,67 @@ describe VagrantPlugins::ProviderLibvirt::Driver do
     end
   end
 
+  describe '#default_video_type' do
+    def domcaps(models)
+      <<-EOF
+        <domainCapabilities>
+          <path>/usr/bin/qemu-system-x86_64</path>
+          <domain>kvm</domain>
+          <devices>
+            <video supported='yes'>
+              <enum name='modelType'>
+                #{models.map { |model| "<value>#{model}</value>" }.join}
+              </enum>
+            </video>
+          </devices>
+        </domainCapabilities>
+      EOF
+    end
+
+    before do
+      allow(subject).to receive(:connection).and_return(connection)
+    end
+
+    [
+      ['cirrus and virtio available', %w(vga cirrus virtio none), 'cirrus'],
+      ['cirrus not available', %w(vga virtio none), 'virtio'],
+      ['neither available', %w(vga none), 'cirrus'],
+    ].each do |name, models, expected|
+      it "should select '#{expected}' when #{name}" do
+        expect(libvirt_client).to receive(:domain_capabilities).with(nil, nil, nil, 'kvm', 0).and_return(domcaps(models))
+
+        expect(subject.default_video_type).to eq(expected)
+      end
+    end
+
+    it 'should fall back to cirrus when domain capabilities are unavailable' do
+      expect(logger).to receive(:warn)
+      expect(libvirt_client).to receive(:domain_capabilities).and_raise(Libvirt::Error)
+
+      expect(subject.default_video_type).to eq('cirrus')
+    end
+
+    context 'with emulator and machine configured' do
+      let(:vagrantfile_providerconfig) do
+        <<-EOF
+          libvirt.driver = 'qemu'
+          libvirt.emulator_path = '/usr/bin/qemu-system-aarch64'
+          libvirt.machine_arch = 'aarch64'
+          libvirt.machine_type = 'virt'
+        EOF
+      end
+
+      it 'should query the capabilities for them once' do
+        expect(libvirt_client).to receive(:domain_capabilities)
+          .with('/usr/bin/qemu-system-aarch64', 'aarch64', 'virt', 'qemu', 0)
+          .once.and_return(domcaps(%w(virtio)))
+
+        expect(subject.default_video_type).to eq('virtio')
+        expect(subject.default_video_type).to eq('virtio')
+      end
+    end
+  end
+
   describe '#state' do
     let(:domain) { double('domain') }
 

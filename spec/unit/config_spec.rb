@@ -664,6 +664,17 @@ describe VagrantPlugins::ProviderLibvirt::Config do
         expect(subject.graphics_ip).to eq('127.0.0.1')
         expect(subject.graphics_autoport).to eq('yes')
         expect(subject.channels).to be_empty
+        expect(subject.video_type).to be_nil
+        expect(subject.video_vram).to eq(16384)
+        expect(subject.video_accel3d).to be false
+      end
+
+      it 'should default video_type to virtio with video_accel3d' do
+        subject.video_accel3d = true
+        subject.finalize!
+
+        expect(subject.video_type).to eq('virtio')
+        expect(subject.graphics_gl).to be true
       end
 
       it 'should handle graphics_type set to spice' do

@@ -39,6 +39,9 @@ describe VagrantPlugins::ProviderLibvirt::Action::StartDomain do
 
       allow(libvirt_domain).to receive(:max_memory).and_return(512*1024)
       allow(libvirt_domain).to receive(:num_vcpus).and_return(1)
+
+      # stand-in for the domain capabilities lookup, see driver spec
+      allow(driver).to receive(:default_video_type).and_return('cirrus')
     end
 
     it 'should execute without changing' do
@@ -48,6 +51,38 @@ describe VagrantPlugins::ProviderLibvirt::Action::StartDomain do
       expect(domain).to receive(:start)
 
       expect(subject.call(env)).to be_nil
+    end
+
+    context 'video type' do
+      let(:updated_domain_xml) { domain_xml.sub("type='cirrus'", "type='virtio'") }
+
+      before do
+        expect(ui).to_not receive(:warn)
+        expect(libvirt_domain).to receive(:autostart=)
+        expect(connection).to receive(:define_domain).with(match(/<model [^>]*type=["']virtio["']/)).and_return(libvirt_domain)
+        expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml, updated_domain_xml)
+        expect(domain).to receive(:start)
+      end
+
+      it 'should apply the default from the driver' do
+        expect(driver).to receive(:default_video_type).and_return('virtio')
+
+        expect(subject.call(env)).to be_nil
+      end
+
+      context 'when configured' do
+        let(:vagrantfile_providerconfig) do
+          <<-EOF
+          libvirt.video_type = 'virtio'
+          EOF
+        end
+
+        it 'should not query the driver' do
+          expect(driver).to_not receive(:default_video_type)
+
+          expect(subject.call(env)).to be_nil
+        end
+      end
     end
 
     context 'when xml is formatted differently' do

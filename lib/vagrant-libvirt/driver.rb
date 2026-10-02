@@ -4,6 +4,7 @@ require 'fog/libvirt'
 require 'libvirt'
 require 'log4r'
 require 'json'
+require 'rexml/document'
 
 module VagrantPlugins
   module ProviderLibvirt
@@ -237,6 +238,27 @@ module VagrantPlugins
             connection.client.list_all_interfaces.map { |iface| iface.name } +
             list_all_networks.map { |net| net.bridge_name }
           ).uniq.reject(&:empty?)
+        end
+      end
+
+      # Not every QEMU build includes cirrus, e.g. EL10, so fall back to virtio
+      # when libvirt reports cirrus as unavailable.
+      def default_video_type
+        @default_video_type ||= begin
+          config = @machine.provider_config
+          # flags must be passed explicitly, ruby-libvirt does not default it to 0
+          domcaps = connection.client.domain_capabilities(
+            config.emulator_path, config.machine_arch, config.machine_type, config.driver, 0
+          )
+          models = REXML::XPath.match(
+            REXML::Document.new(domcaps),
+            "/domainCapabilities/devices/video[@supported='yes']/enum[@name='modelType']/value"
+          ).map(&:text)
+
+          %w(cirrus virtio).find { |model| models.include?(model) } || 'cirrus'
+        rescue Libvirt::Error => e
+          @logger.warn("Unable to retrieve domain capabilities, using cirrus video type: #{e.message}")
+          'cirrus'
         end
       end
 

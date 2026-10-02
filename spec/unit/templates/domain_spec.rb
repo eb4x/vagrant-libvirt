@@ -28,6 +28,9 @@ describe 'templates/domain' do
     def finalize!
       super
 
+      # stand-in for the domain capabilities lookup done during create domain
+      @video_type ||= 'cirrus'
+
       disks.each do |disk|
         disk[:absolute_path] = '/var/lib/libvirt/images/' + disk[:path]
       end

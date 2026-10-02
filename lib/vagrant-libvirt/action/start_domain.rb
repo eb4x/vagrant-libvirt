@@ -418,19 +418,20 @@ module VagrantPlugins
             descr_changed = true
             video.parent.delete_element(video)
           else
+            video_type = config.video_type || env[:machine].provider.driver.default_video_type
             video_model = REXML::XPath.first(xml_descr, '/domain/devices/video/model')
             if video_model.nil?
-              @logger.debug "video updated from not set to type '#{config.video_type}' and vram '#{config.video_vram}'"
+              @logger.debug "video updated from not set to type '#{video_type}' and vram '#{config.video_vram}'"
               descr_changed = true
               video_model = REXML::Element.new('model', REXML::XPath.first(xml_descr, '/domain/devices/video'))
-              video_model.attributes['type'] = config.video_type
+              video_model.attributes['type'] = video_type
               video_model.attributes['vram'] = config.video_vram
             else
-              if video_model.attributes['type'] != config.video_type || video_model.attributes['vram'] != config.video_vram.to_s
-                @logger.debug "video type updated from '#{video_model.attributes['type']}' to '#{config.video_type}'"
+              if video_model.attributes['type'] != video_type || video_model.attributes['vram'] != config.video_vram.to_s
+                @logger.debug "video type updated from '#{video_model.attributes['type']}' to '#{video_type}'"
                 @logger.debug "video vram updated from '#{video_model.attributes['vram']}' to '#{config.video_vram}'"
                 descr_changed = true
-                video_model.attributes['type'] = config.video_type
+                video_model.attributes['type'] = video_type
                 video_model.attributes['vram'] = config.video_vram
               end
             end

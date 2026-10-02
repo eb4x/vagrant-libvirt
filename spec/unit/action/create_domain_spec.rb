@@ -28,6 +28,8 @@ describe VagrantPlugins::ProviderLibvirt::Action::CreateDomain do
       allow(domain_volume).to receive(:pool_name).and_return('default')
       allow(domain_volume).to receive(:path).and_return('/var/lib/libvirt/images/vagrant-test_default.img')
       allow(machine).to receive_message_chain("box.name") { 'vagrant-libvirt/test' }
+      # stand-in for the domain capabilities lookup, see driver spec
+      allow(driver).to receive(:default_video_type).and_return('cirrus')
 
       allow(logger).to receive(:info)
       allow(logger).to receive(:debug)
@@ -60,6 +62,30 @@ describe VagrantPlugins::ProviderLibvirt::Action::CreateDomain do
         expect(volumes).to_not receive(:create) # additional disks only
 
         expect(subject.call(env)).to be_nil
+      end
+
+      context 'video type' do
+        it 'should use the default video type from the driver' do
+          expect(driver).to receive(:default_video_type).and_return('virtio')
+          expect(servers).to receive(:create).with(xml: domain_xml.sub("type='cirrus'", "type='virtio'")).and_return(machine)
+
+          expect(subject.call(env)).to be_nil
+        end
+
+        context 'when configured' do
+          let(:vagrantfile_providerconfig) do
+            <<-EOF
+            libvirt.video_type = 'vga'
+            EOF
+          end
+
+          it 'should not query the driver' do
+            expect(driver).to_not receive(:default_video_type)
+            expect(servers).to receive(:create).with(xml: domain_xml.sub("type='cirrus'", "type='vga'")).and_return(machine)
+
+            expect(subject.call(env)).to be_nil
+          end
+        end
       end
 
       context 'graphics autoport disabled' do

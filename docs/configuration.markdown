@@ -189,9 +189,10 @@ end
   guest](https://libvirt.org/formatdomain.html#hypervisor-features). Useful for
   [GPU passthrough](#pci-device-passthrough) on stubborn drivers. Default is false.
 * `video_type` - Sets the graphics card type exposed to the guest.  Defaults to
-  "cirrus".  [Possible
+  "virtio" if `video_accel3d` is `true`, otherwise "cirrus", or "virtio" if the
+  host does not support "cirrus".  [Possible
   values](http://libvirt.org/formatdomain.html#video-devices) are "vga",
-  "cirrus", "vmvga", "xen", "vbox", or "qxl".
+  "cirrus", "vmvga", "xen", "vbox", "qxl", or "virtio".
 * `video_vram` - Used by some graphics card types to vary the amount of RAM
   dedicated to video.  Defaults to 16384.
 * `video_accel3d` - Set to `true` to enable 3D acceleration. Defaults to

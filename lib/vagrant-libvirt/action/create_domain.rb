@@ -75,6 +75,7 @@ module VagrantPlugins
           @graphics_passwd = config.graphics_passwd
           @graphics_gl = config.graphics_gl
           @video_type = config.video_type
+          @video_type ||= env[:machine].provider.driver.default_video_type unless @graphics_type == 'none'
           @sound_type = config.sound_type
           @video_vram = config.video_vram
           @video_accel3d = config.video_accel3d

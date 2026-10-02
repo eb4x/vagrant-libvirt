@@ -391,8 +391,8 @@ describe VagrantPlugins::ProviderLibvirt::Driver do
     end
 
     [
-      ['cirrus and virtio available', %w(vga cirrus virtio none), 'cirrus'],
-      ['cirrus not available', %w(vga virtio none), 'virtio'],
+      ['cirrus and virtio available', %w(vga cirrus virtio none), 'virtio'],
+      ['virtio not available', %w(vga cirrus none), 'cirrus'],
       ['neither available', %w(vga none), 'cirrus'],
     ].each do |name, models, expected|
       it "should select '#{expected}' when #{name}" do

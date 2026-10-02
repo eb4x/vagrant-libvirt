@@ -241,8 +241,8 @@ module VagrantPlugins
         end
       end
 
-      # Not every QEMU build includes cirrus, e.g. EL10, so fall back to virtio
-      # when libvirt reports cirrus as unavailable.
+      # Not every QEMU build includes virtio-vga, e.g. Arch's qemu-base, so fall
+      # back to cirrus when libvirt reports virtio as unavailable.
       def default_video_type
         @default_video_type ||= begin
           config = @machine.provider_config
@@ -255,7 +255,7 @@ module VagrantPlugins
             "/domainCapabilities/devices/video[@supported='yes']/enum[@name='modelType']/value"
           ).map(&:text)
 
-          %w(cirrus virtio).find { |model| models.include?(model) } || 'cirrus'
+          %w(virtio cirrus).find { |model| models.include?(model) } || 'cirrus'
         rescue Libvirt::Error => e
           @logger.warn("Unable to retrieve domain capabilities, using cirrus video type: #{e.message}")
           'cirrus'

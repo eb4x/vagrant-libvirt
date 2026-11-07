@@ -555,6 +555,81 @@ describe VagrantPlugins::ProviderLibvirt::Action::StartDomain do
       end
     end
 
+    context 'firmware' do
+      let(:vagrantfile_providerconfig) do
+        <<-EOF
+        libvirt.firmware = 'efi'
+        libvirt.firmware_features = {'secure-boot' => false}
+        EOF
+      end
+
+      context 'when unchanged' do
+        let(:test_file) { 'firmware_efi.xml' }
+
+        it 'should keep the libvirt selected loader and nvram' do
+          expect(ui).to_not receive(:warn)
+          expect(connection).to_not receive(:define_domain)
+          expect(libvirt_domain).to receive(:autostart=)
+          expect(domain).to receive(:start)
+
+          expect(subject.call(env)).to be_nil
+        end
+      end
+
+      context 'when being added to existing' do
+        let(:test_file) { 'existing.xml' }
+        let(:updated_test_file) { 'existing_added_firmware.xml' }
+        let(:applied_domain_xml) { File.read(File.join(File.dirname(__FILE__), File.basename(__FILE__, '.rb'), 'firmware_efi.xml')) }
+
+        it 'should add the firmware and accept the libvirt selected loader and nvram' do
+          expect(ui).to_not receive(:warn)
+          expect(connection).to receive(:define_domain).with(updated_domain_xml).and_return(libvirt_domain)
+          expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml, applied_domain_xml)
+          expect(libvirt_domain).to receive(:autostart=)
+          expect(domain).to receive(:start)
+
+          expect(subject.call(env)).to be_nil
+        end
+      end
+
+      context 'when features changed' do
+        let(:vagrantfile_providerconfig) do
+          <<-EOF
+          libvirt.firmware = 'efi'
+          libvirt.firmware_features = {'secure-boot' => true}
+          EOF
+        end
+        let(:test_file) { 'firmware_efi.xml' }
+        let(:updated_test_file) { 'firmware_efi_secure_boot.xml' }
+
+        it 'should replace the features and drop the selected loader and nvram' do
+          expect(ui).to_not receive(:warn)
+          expect(connection).to receive(:define_domain).with(updated_domain_xml).and_return(libvirt_domain)
+          expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml, updated_domain_xml)
+          expect(libvirt_domain).to receive(:autostart=)
+          expect(domain).to receive(:start)
+
+          expect(subject.call(env)).to be_nil
+        end
+      end
+
+      context 'when being removed' do
+        let(:vagrantfile_providerconfig) { }
+        let(:test_file) { 'firmware_efi.xml' }
+        let(:updated_test_file) { 'firmware_efi_removed.xml' }
+
+        it 'should remove the firmware, loader and nvram' do
+          expect(ui).to_not receive(:warn)
+          expect(connection).to receive(:define_domain).with(updated_domain_xml).and_return(libvirt_domain)
+          expect(libvirt_domain).to receive(:xml_desc).and_return(domain_xml, updated_domain_xml)
+          expect(libvirt_domain).to receive(:autostart=)
+          expect(domain).to receive(:start)
+
+          expect(subject.call(env)).to be_nil
+        end
+      end
+    end
+
     context 'tpm' do
       context 'passthrough tpm added' do
         let(:updated_test_file) { 'default_added_tpm_path.xml' }

@@ -511,6 +511,38 @@ module VagrantPlugins
             end
           end
 
+          os = REXML::XPath.first(xml_descr, '/domain/os')
+          firmware = REXML::XPath.first(os, 'firmware')
+          current_features = {}
+          REXML::XPath.each(os, 'firmware/feature') do |feature|
+            current_features[feature.attributes['name']] = feature.attributes['enabled'] == 'yes'
+          end
+          # libvirt adds the features of the firmware it selected, so only compare the configured ones
+          features_changed = config.firmware_features.any? { |name, enabled| current_features[name] != enabled }
+          if os.attributes['firmware'] != config.firmware || features_changed
+            @logger.debug "firmware updated from '#{os.attributes['firmware']}' to '#{config.firmware}'"
+            descr_changed = true
+            if config.firmware
+              os.attributes['firmware'] = config.firmware
+            else
+              os.delete_attribute('firmware')
+            end
+            os.delete_element(firmware) unless firmware.nil?
+            unless config.firmware_features.empty?
+              firmware = REXML::Element.new('firmware')
+              config.firmware_features.each do |name, enabled|
+                firmware.add_element('feature', 'enabled' => enabled ? 'yes' : 'no', 'name' => name)
+              end
+              os.insert_after(REXML::XPath.first(os, 'type'), firmware)
+            end
+            # loader and nvram were selected for the previous firmware settings, drop them so
+            # that libvirt selects them again, any configured ones are added back below
+            ['loader', 'nvram'].each do |name|
+              element = REXML::XPath.first(os, name)
+              os.delete_element(element) unless element.nil?
+            end
+          end
+
           loader = REXML::XPath.first(xml_descr, '/domain/os/loader')
           if config.loader
             if loader.nil?
@@ -525,7 +557,7 @@ module VagrantPlugins
               end
             end
             loader.attributes['type'] = config.nvram ? 'pflash' : 'rom'
-          elsif !loader.nil?
+          elsif !loader.nil? && config.firmware.nil?
             descr_changed = true
             loader.parent.delete_element(loader)
           end
@@ -535,7 +567,7 @@ module VagrantPlugins
             if nvram.nil?
               descr_changed = true
               nvram = REXML::Element.new('nvram')
-              REXML::XPath.first(xml_descr, '/domain/os').insert_after(loader, nvram)
+              REXML::XPath.first(xml_descr, '/domain/os').insert_after(loader || REXML::XPath.first(os, 'type'), nvram)
               nvram.text = config.nvram
             else
               if (nvram.text or '').strip != config.nvram
@@ -543,7 +575,7 @@ module VagrantPlugins
                 nvram.text = config.nvram
               end
             end
-          elsif !nvram.nil?
+          elsif !nvram.nil? && config.firmware.nil?
             descr_changed = true
             nvram.parent.delete_element(nvram)
           end
@@ -575,6 +607,11 @@ module VagrantPlugins
             # even if they are equivalent will be reported as being different.
             proposed.xml['devices'][0].each { |_, v| next unless v.is_a?(Array); v.sort_by! { |e| [e['type'], e['index']]} }
             applied.xml['devices'][0].each { |_, v| next unless v.is_a?(Array); v.sort_by! { |e| [e['type'], e['index']]} }
+
+            # with firmware autoselection libvirt fills in the loader, nvram and firmware features
+            if config.firmware
+              [proposed, applied].each { |x| ['firmware', 'loader', 'nvram'].each { |k| x.xml['os'][0].delete(k) } }
+            end
 
             if proposed != applied
               require 'diffy'

@@ -878,6 +878,75 @@ describe VagrantPlugins::ProviderLibvirt::Config do
           assert_valid
         end
       end
+
+      context 'with firmware efi' do
+        it 'should be valid' do
+          subject.firmware = 'efi'
+
+          assert_valid
+        end
+      end
+
+      context 'with firmware bios' do
+        it 'should be invalid' do
+          subject.firmware = 'bios'
+
+          assert_invalid
+        end
+      end
+    end
+
+    context 'with firmware defined' do
+      it 'should be valid for efi' do
+        subject.firmware = 'efi'
+
+        assert_valid
+      end
+
+      it 'should be valid for bios' do
+        subject.firmware = 'bios'
+
+        assert_valid
+      end
+
+      it 'should be invalid for unknown types' do
+        subject.firmware = 'uefi'
+
+        errors = assert_invalid
+        expect(errors).to include(match(/firmware must be one of 'bios' or 'efi'/))
+      end
+
+      it 'should be invalid with a loader' do
+        subject.firmware = 'efi'
+        subject.loader = '/path/to/some/loader'
+
+        errors = assert_invalid
+        expect(errors).to include(match(/cannot set both 'firmware' and 'loader'/))
+      end
+
+      it 'should be valid with features' do
+        subject.firmware = 'efi'
+        subject.firmware_features = {'secure-boot' => false}
+
+        assert_valid
+      end
+
+      it 'should be invalid with non boolean features' do
+        subject.firmware = 'efi'
+        subject.firmware_features = {'secure-boot' => 'no'}
+
+        errors = assert_invalid
+        expect(errors).to include(match(/firmware_features value for 'secure-boot' must be a boolean/))
+      end
+    end
+
+    context 'with firmware_features defined' do
+      it 'should be invalid without firmware' do
+        subject.firmware_features = {'secure-boot' => false}
+
+        errors = assert_invalid
+        expect(errors).to include(match(/use of 'firmware_features' requires 'firmware'/))
+      end
     end
 
     context '@machine_arch and @cpu_*' do

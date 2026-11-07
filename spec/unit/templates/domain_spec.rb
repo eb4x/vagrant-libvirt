@@ -187,6 +187,18 @@ describe 'templates/domain' do
     end
   end
 
+  context 'when firmware is set' do
+    before do
+      domain.firmware = 'efi'
+      domain.firmware_features = {'secure-boot' => false, :'enrolled-keys' => false}
+    end
+    let(:test_file) { 'domain_firmware_efi.xml' }
+    it 'renders template' do
+      domain.finalize!
+      expect(domain.to_xml('domain')).to eq xml_expected
+    end
+  end
+
   context 'when tpm 2.0 device is specified' do
     before do
       domain.tpm_version = '2.0'

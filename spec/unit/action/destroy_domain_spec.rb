@@ -201,6 +201,33 @@ describe VagrantPlugins::ProviderLibvirt::Action::DestroyDomain do
         end
       end
 
+      context 'when has firmware efi' do
+        let(:vagrantfile_providerconfig) do
+          <<-EOF
+          libvirt.firmware = 'efi'
+          EOF
+        end
+
+        it 'sets destroy flags to remove nvram' do
+          expect(domain).to receive(:destroy).with(destroy_volumes: true, flags: VagrantPlugins::ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_NVRAM)
+          expect(subject.call(env)).to be_nil
+        end
+
+        context 'when has nvram' do
+          let(:vagrantfile_providerconfig) do
+            <<-EOF
+            libvirt.firmware = 'efi'
+            libvirt.nvram = '/path/to/nvram/file'
+            EOF
+          end
+
+          it 'sets destroy flags to keep nvram' do
+            expect(domain).to receive(:destroy).with(destroy_volumes: true, flags: VagrantPlugins::ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_KEEP_NVRAM)
+            expect(subject.call(env)).to be_nil
+          end
+        end
+      end
+
       context 'when has CDROMs attached' do
         let(:vagrantfile_providerconfig) do
           <<-EOF

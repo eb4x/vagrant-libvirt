@@ -48,7 +48,12 @@ module VagrantPlugins
           domain = env[:machine].provider.driver.connection.servers.get(env[:machine].id.to_s)
 
           undefine_flags = 0
-          undefine_flags |= ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_KEEP_NVRAM if env[:machine].provider_config.nvram
+          if env[:machine].provider_config.nvram
+            undefine_flags |= ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_KEEP_NVRAM
+          elsif env[:machine].provider_config.firmware == 'efi'
+            # varstore was created by libvirt for this domain, so remove it
+            undefine_flags |= ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_NVRAM
+          end
 
           if env[:machine].provider_config.disks.empty? &&
              env[:machine].provider_config.cdroms.empty?

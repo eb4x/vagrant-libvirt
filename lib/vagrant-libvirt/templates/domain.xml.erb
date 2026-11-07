@@ -63,7 +63,7 @@
   <%- end -%>
   </cputune>
 <%- end -%>
-  <os>
+  <os<%= " firmware='#{@firmware}'" if @firmware %>>
 <%- if @machine_type -%>
   <%- if @machine_arch -%>
     <type arch='<%= @machine_arch %>' machine='<%= @machine_type %>'>hvm</type>
@@ -76,6 +76,13 @@
   <%- else -%>
     <type>hvm</type>
   <%- end -%>
+<%- end -%>
+<%- unless @firmware_features.empty? -%>
+    <firmware>
+  <%- @firmware_features.each do |name, enabled| -%>
+      <feature enabled='<%= enabled ? 'yes' : 'no' %>' name='<%= name %>'/>
+  <%- end -%>
+    </firmware>
 <%- end -%>
 <%- if @loader -%>
   <%- if @nvram -%>

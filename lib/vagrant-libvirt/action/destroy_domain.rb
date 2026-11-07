@@ -54,6 +54,9 @@ module VagrantPlugins
             undefine_flags |= ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_NVRAM
           elsif nvram
             undefine_flags |= ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_KEEP_NVRAM
+          elsif env[:machine].provider_config.firmware == 'efi'
+            # varstore was created by libvirt for this domain, so remove it
+            undefine_flags |= ProviderLibvirt::Util::DomainFlags::VIR_DOMAIN_UNDEFINE_NVRAM
           end
 
           if env[:machine].provider_config.disks.empty? &&

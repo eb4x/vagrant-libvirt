@@ -160,6 +160,24 @@ end
   ```
   libvirt.memtune :type => "hard_limit", :value => 2500000 # Note here the value in kB (not in Mb)
   ```
+* `firmware` - Lets libvirt select the firmware for the guest, either `efi`
+  or `bios`. With `efi`, libvirt picks the loader from the firmware
+  descriptors installed with QEMU and creates a variable store for the domain
+  from the matching template, which is removed when the machine is destroyed.
+  Cannot be combined with `loader`. Requires libvirt 5.2 or newer.
+  ```
+  libvirt.firmware = 'efi'
+  ```
+* `firmware_features` - Firmware features to require (`true`) or exclude
+  (`false`) when libvirt selects the `efi` firmware, such as `secure-boot` and
+  `enrolled-keys`. Without them libvirt uses the firmware with the highest
+  priority, which on some distributions has secure boot enabled. Changing these
+  for an existing machine selects the firmware again, but keeps its variable
+  store. Requires libvirt 7.2 or newer.
+  ```
+  libvirt.firmware = 'efi'
+  libvirt.firmware_features = { 'secure-boot' => false }
+  ```
 * `loader` - Sets path to custom UEFI loader.
 * `nvram` - Sets path to the UEFI variable store used with `loader`, which
   switches the loader to `pflash`. The file is kept when the machine is

@@ -48,6 +48,8 @@ module VagrantPlugins
           @cpu_model = config.cpu_model
           @cpu_fallback = config.cpu_fallback
           @numa_nodes = config.numa_nodes
+          @firmware = config.firmware
+          @firmware_features = config.firmware_features
           @loader = config.loader
           @nvram = config.nvram
           @machine_type = config.machine_type
@@ -270,6 +272,10 @@ module VagrantPlugins
           env[:ui].info(" -- Management MAC:    #{@management_network_mac}") if @management_network_mac
           env[:ui].info(" -- Kernel:            #{@kernel}") if @kernel
           env[:ui].info(" -- Initrd:            #{@initrd}") if @initrd
+          env[:ui].info(" -- Firmware:          #{@firmware}") if @firmware
+          @firmware_features.each do |name, enabled|
+            env[:ui].info(" -- Firmware feature:  #{name}=#{enabled ? 'yes' : 'no'}")
+          end
           env[:ui].info(" -- Loader:            #{@loader}") if @loader
           if @nvram
             nvram_desc = @nvram.to_s.strip.empty? ? '(managed by libvirt)' : @nvram

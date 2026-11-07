@@ -107,6 +107,8 @@ module VagrantPlugins
       attr_accessor :clock_timers
       attr_accessor :launchsecurity_data
       attr_accessor :numa_nodes
+      attr_accessor :firmware
+      attr_accessor :firmware_features
       attr_accessor :loader
       attr_accessor :nvram
       attr_accessor :boot_order
@@ -292,6 +294,8 @@ module VagrantPlugins
         @clock_timers      = []
         @launchsecurity_data = UNSET_VALUE
         @numa_nodes        = UNSET_VALUE
+        @firmware          = UNSET_VALUE
+        @firmware_features = UNSET_VALUE
         @loader            = UNSET_VALUE
         @nvram             = UNSET_VALUE
         @machine_type      = UNSET_VALUE
@@ -1006,6 +1010,9 @@ module VagrantPlugins
         @clock_timers = [] if @clock_timers == UNSET_VALUE
         @launchsecurity_data = nil if @launchsecurity_data == UNSET_VALUE
         @numa_nodes = @numa_nodes == UNSET_VALUE ? nil : _generate_numa
+        @firmware = nil if @firmware == UNSET_VALUE
+        @firmware_features = {} if @firmware_features == UNSET_VALUE
+        @firmware_features = @firmware_features.map { |name, enabled| [name.to_s, enabled] }.to_h
         @loader = nil if @loader == UNSET_VALUE
         @nvram = nil if @nvram == UNSET_VALUE
         @machine_virtual_size = nil if @machine_virtual_size == UNSET_VALUE
@@ -1196,8 +1203,26 @@ module VagrantPlugins
           errors << "libvirt.qemu_use_agent must be a boolean."
         end
 
-        if !@nvram.nil? && @loader.nil?
-          errors << "use of 'nvram' requires a 'loader' to be specified, please add one to the configuration"
+        unless @firmware.nil? || ['bios', 'efi'].include?(@firmware)
+          errors << "firmware must be one of 'bios' or 'efi', got '#{@firmware}'"
+        end
+
+        if !@firmware.nil? && !@loader.nil?
+          errors << "cannot set both 'firmware' and 'loader', 'firmware' lets libvirt select the loader"
+        end
+
+        if !@firmware_features.empty? && @firmware != 'efi'
+          errors << "use of 'firmware_features' requires 'firmware' to be set to 'efi'"
+        end
+
+        @firmware_features.each do |name, enabled|
+          unless enabled == true || enabled == false
+            errors << "firmware_features value for '#{name}' must be a boolean, got '#{enabled}'"
+          end
+        end
+
+        if !@nvram.nil? && @loader.nil? && @firmware != 'efi'
+          errors << "use of 'nvram' requires a 'loader' or 'firmware' set to 'efi', please add one to the configuration"
         end
 
         if @qemu_use_agent == true
@@ -1293,6 +1318,10 @@ module VagrantPlugins
           c = clock_timers.dup
           c += other.clock_timers
           result.clock_timers = c
+
+          c = firmware_features != UNSET_VALUE ? firmware_features.dup : {}
+          c.merge!(other.firmware_features) if other.firmware_features != UNSET_VALUE
+          result.firmware_features = c
 
           c = qemu_env != UNSET_VALUE ? qemu_env.dup : {}
           c.merge!(other.qemu_env) if other.qemu_env != UNSET_VALUE
